@@ -4,7 +4,14 @@ Brief description of your project.
 
 ## Getting Started
 
-Instructions on how to set up and run your project.
+
+2024年12-31日
+    完成了对于分层结构DDD领域驱动设计的学习
+    下一步实现登录功能
+    后面实现Edit功能，并且将提供显示到Profile中
+
+
+
 
 ## Usage
 

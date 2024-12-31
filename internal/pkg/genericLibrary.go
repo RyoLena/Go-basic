@@ -201,6 +201,7 @@ func (q *Queue[T]) Dequeue() (T, bool) {
 }
 
 // ——————————————————————————简易拷贝————————————————————————————————————
+
 // BeanCopy BeanCopier basic implementation, no error handling
 func BeanCopy(dest, src interface{}) {
 	destVal := reflect.ValueOf(dest).Elem()

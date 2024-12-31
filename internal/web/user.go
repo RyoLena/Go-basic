@@ -1,17 +1,21 @@
 package web
 
 import (
+	"Project/webBook_git/internal/domain"
+	"Project/webBook_git/internal/service"
+	"fmt"
 	regexp "github.com/dlclark/regexp2"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
 
 type UserHandle struct {
+	svc         *service.UserService
 	emilExp     *regexp.Regexp
 	passwordExp *regexp.Regexp
 }
 
-func NewUserHandle() *UserHandle {
+func NewUserHandle(svc *service.UserService) *UserHandle {
 	const (
 		//正则表达式 简单的邮箱验证以及至少需要八位且含有一个特殊字符的密码验证
 		emailRegexPattern    = `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
@@ -20,6 +24,7 @@ func NewUserHandle() *UserHandle {
 	emailExp := regexp.MustCompile(emailRegexPattern, regexp.None)
 	passwordExp := regexp.MustCompile(passwordRegexPattern, regexp.None)
 	return &UserHandle{
+		svc:         svc,
 		emilExp:     emailExp,
 		passwordExp: passwordExp,
 	}
@@ -72,7 +77,22 @@ func (user *UserHandle) SignalUP(ctx *gin.Context) {
 }
 
 func (user *UserHandle) Login(ctx *gin.Context) {
-
+	type LoginReq struct {
+		Email    string
+		Password string
+	}
+	var req LoginReq
+	if err := ctx.Bind(&req); err != nil {
+		//不需要填写返回信息，因为 gin绑定错误会自动返回错误信息 400
+		return
+	}
+	//验证 通过一层层下传数据验证
+	//调用service层的方法
+	err := user.svc.SignUp(ctx, domain.User{
+		Email:    req.Email,
+		Password: req.Password,
+	})
+	fmt.Println(err)
 }
 
 func (user *UserHandle) Edit(ctx *gin.Context) {
