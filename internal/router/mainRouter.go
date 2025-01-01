@@ -26,7 +26,9 @@ func MainGroute() *gin.Engine {
 		},
 		MaxAge: 12 * time.Hour,
 	}))
+	//session
 
 	UserGroutine(server)
+
 	return server
 }

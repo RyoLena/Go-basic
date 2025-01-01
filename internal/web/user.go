@@ -3,8 +3,9 @@ package web
 import (
 	"Project/webBook_git/internal/domain"
 	"Project/webBook_git/internal/service"
-	"fmt"
+	"errors"
 	regexp "github.com/dlclark/regexp2"
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -67,7 +68,18 @@ func (user *UserHandle) SignalUP(ctx *gin.Context) {
 		return
 	}
 	//3.数据库操作
-
+	err = user.svc.SignUp(ctx, domain.User{
+		Email:    req.Email,
+		Password: req.Password,
+	})
+	if errors.Is(err, service.SVCErrUserDuplicated) {
+		ctx.String(http.StatusOK, "邮箱已经被注册")
+		return
+	}
+	if err != nil {
+		ctx.String(http.StatusOK, "svc的问题造成的系统异常")
+		return
+	}
 	//4.返回结果
 	ctx.JSON(200, gin.H{
 		"email":            req.Email,
@@ -88,11 +100,35 @@ func (user *UserHandle) Login(ctx *gin.Context) {
 	}
 	//验证 通过一层层下传数据验证
 	//调用service层的方法
-	err := user.svc.SignUp(ctx, domain.User{
+	usvc, err := user.svc.Login(ctx, domain.User{
 		Email:    req.Email,
 		Password: req.Password,
 	})
-	fmt.Println(err)
+	if errors.Is(err, service.ErrInvalidUserOrPassword) {
+		ctx.String(http.StatusOK, "账号或者密码不对")
+		return
+	}
+	if err != nil {
+		ctx.String(http.StatusOK, "login系统错误")
+		return
+	}
+
+	//保持登录状态
+	//用session
+	sess := sessions.Default(ctx)
+	sess.Set("userID", usvc.ID)
+	err = sess.Save()
+	if err != nil {
+		ctx.String(200, "session保存错误")
+		return
+	}
+	//登录校验
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"email":    usvc.Email,
+		"password": usvc.Password,
+	})
+
 }
 
 func (user *UserHandle) Edit(ctx *gin.Context) {
