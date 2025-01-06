@@ -7,7 +7,9 @@ import (
 	regexp "github.com/dlclark/regexp2"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"net/http"
+	"time"
 )
 
 type UserHandle struct {
@@ -88,6 +90,63 @@ func (user *UserHandle) SignalUP(ctx *gin.Context) {
 	})
 }
 
+func (user *UserHandle) LoginJWT(ctx *gin.Context) {
+	type LoginReq struct {
+		Email    string
+		Password string
+	}
+	var req LoginReq
+	if err := ctx.Bind(&req); err != nil {
+		//不需要填写返回信息，因为 gin绑定错误会自动返回错误信息 400
+		return
+	}
+	//验证 通过一层层下传数据验证
+	//调用service层的方法
+	usvc, err := user.svc.Login(ctx, domain.User{
+		Email:    req.Email,
+		Password: req.Password,
+	})
+	if errors.Is(err, service.ErrInvalidUserOrPassword) {
+		ctx.String(http.StatusOK, "账号或者密码不对")
+		return
+	}
+	if err != nil {
+		ctx.String(http.StatusOK, "login系统错误")
+		return
+	}
+
+	claims := UserClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			//设置过期时间
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Second * 30)),
+		},
+		Uid: usvc.ID,
+		//Email:     usvc.Email,
+		UserAgent: ctx.Request.UserAgent(),
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
+	tokenStr, err := token.SignedString([]byte("sUvca2dpn7veAV4odb4xQNwYFV0EescZ"))
+	if err != nil {
+		ctx.String(http.StatusOK, "jwt加密系统错误")
+		return
+	}
+	ctx.Header("x-jwt-token", tokenStr)
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"email":    usvc.Email,
+		"password": usvc.Password,
+	})
+}
+
+type UserClaims struct {
+	jwt.RegisteredClaims
+	//想要获取什么从这里添加
+	Uid int64
+	//Email     string
+	UserAgent string
+}
+
 func (user *UserHandle) Login(ctx *gin.Context) {
 	type LoginReq struct {
 		Email    string
@@ -117,23 +176,47 @@ func (user *UserHandle) Login(ctx *gin.Context) {
 	//用session
 	sess := sessions.Default(ctx)
 	sess.Set("userID", usvc.ID)
+	sess.Options(sessions.Options{
+		MaxAge: 30,
+	})
 	err = sess.Save()
 	if err != nil {
 		ctx.String(200, "session保存错误")
 		return
 	}
+
 	//登录校验
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"email":    usvc.Email,
 		"password": usvc.Password,
 	})
-
 }
 
 func (user *UserHandle) Edit(ctx *gin.Context) {
 
 }
 func (user *UserHandle) Profile(ctx *gin.Context) {
+	type Profile struct {
+		ID    int64
+		Email string
+	}
+	var userProfile Profile
+	err := ctx.Bind(&userProfile)
+	if err != nil {
+		return
+	}
+	c, ok := ctx.Get("claims")
 
+	claims, ok := c.(*UserClaims)
+	if !ok {
+		ctx.String(http.StatusOK, "Claims代码系统错误")
+		return
+	}
+	userProfile.ID = claims.Uid
+	//userProfile.Email = claims.Email
+	ctx.JSON(http.StatusOK, gin.H{
+		"userID": userProfile.ID,
+		//"userEmail": userProfile.Email,
+	})
 }
