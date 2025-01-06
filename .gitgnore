@@ -4,6 +4,8 @@
 *.dll
 *.so
 *.dylib
+# 忽略数据库文件
+data/db/
 
 # Test binary, built with `go test -c`
 *.test
