@@ -13,6 +13,7 @@ import (
 )
 
 type UserHandle struct {
+	codeSVC     *service.CodeService
 	svc         *service.UserService
 	emilExp     *regexp.Regexp
 	passwordExp *regexp.Regexp
@@ -115,28 +116,35 @@ func (user *UserHandle) LoginJWT(ctx *gin.Context) {
 		return
 	}
 
-	claims := UserClaims{
-		RegisteredClaims: jwt.RegisteredClaims{
-			//设置过期时间
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Second * 30)),
-		},
-		Uid: usvc.ID,
-		//Email:     usvc.Email,
-		UserAgent: ctx.Request.UserAgent(),
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
-	tokenStr, err := token.SignedString([]byte("sUvca2dpn7veAV4odb4xQNwYFV0EescZ"))
-	if err != nil {
-		ctx.String(http.StatusOK, "jwt加密系统错误")
+	if err := user.SetJWT(ctx, usvc.ID); err != nil {
+		ctx.String(http.StatusOK, "系统错误")
 		return
 	}
-	ctx.Header("x-jwt-token", tokenStr)
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"email":    usvc.Email,
 		"password": usvc.Password,
 	})
+}
+
+func (user *UserHandle) SetJWT(ctx *gin.Context, uid int64) error {
+	claims := UserClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			//设置过期时间
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Second * 30)),
+		},
+		Uid: uid,
+		//Email:     usvc.Email,
+		UserAgent: ctx.Request.UserAgent(),
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
+	tokenStr, err := token.SignedString([]byte("sUvca2dpn7veAV4odb4xQNwYFV0EescZ"))
+	if err != nil {
+		ctx.String(http.StatusOK, "jwt加密系统错误")
+		return err
+	}
+	ctx.Header("x-jwt-token", tokenStr)
+	return nil
 }
 
 type UserClaims struct {
@@ -145,6 +153,82 @@ type UserClaims struct {
 	Uid int64
 	//Email     string
 	UserAgent string
+}
+
+func (user *UserHandle) SendSMSCode(ctx *gin.Context) {
+	const biz = "loginOrVerify"
+
+	type Reqs struct {
+		Phone string `json:"phone"`
+	}
+	var req Reqs
+	if err := ctx.Bind(&req); err != nil {
+		return
+	}
+	err := user.codeSVC.SendCode(ctx, biz, req.Phone)
+	if err != nil {
+		ctx.JSON(http.StatusOK, Result{
+			Code: 5,
+			Msg:  "系统错误",
+			Data: err,
+		})
+		return
+	}
+	ctx.JSON(http.StatusOK, Result{
+		Code: 1,
+		Msg:  "发送成功",
+	})
+}
+
+func (user *UserHandle) LoginBySMS(ctx *gin.Context) {
+	const biz = "loginOrVerify"
+	type Reqs struct {
+		Phone string `json:"phone"`
+		Code  string `json:"code"`
+	}
+	var req Reqs
+	if err := ctx.Bind(&req); err != nil {
+		return
+	}
+	err := user.codeSVC.VerifyCode(ctx, biz, req.Phone, req.Code)
+	switch {
+	case err == nil:
+		ctx.JSON(http.StatusOK, Result{
+			Code: 1,
+			Msg:  "校验成功",
+		})
+	case errors.Is(err, service.ErrCodeVerifyToManyTimes):
+		ctx.JSON(http.StatusOK, Result{
+			Code: 3,
+			Msg:  "发送太频繁，请稍后再试",
+		})
+	default:
+		ctx.JSON(http.StatusOK, Result{
+			Code: 5,
+			Msg:  "系统错误",
+			Data: err,
+		})
+		return
+	}
+
+	//给他注册
+	u, err := user.svc.FindOrCreate(ctx, req.Phone)
+	if err != nil {
+		ctx.JSON(http.StatusOK, Result{
+			Code: 5,
+			Msg:  "FindOrCreate系统错误",
+		})
+		return
+	}
+	err = user.SetJWT(ctx, u.ID)
+	if err != nil {
+		ctx.JSON(http.StatusOK, Result{
+			Code: 5,
+			Msg:  "setJWT系统错误",
+		})
+		return
+	}
+	ctx.String(http.StatusOK, "校验成功")
 }
 
 func (user *UserHandle) Login(ctx *gin.Context) {

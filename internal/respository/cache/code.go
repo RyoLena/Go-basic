@@ -27,7 +27,7 @@ type CodeCache struct {
 	client redis.Cmdable
 }
 
-func NewCOdeCache(client redis.Cmdable) *CodeCache {
+func NewCodeCache(client redis.Cmdable) *CodeCache {
 	if client == nil {
 		log.Fatal("Redis client is nil")
 	}
@@ -38,7 +38,9 @@ func NewCOdeCache(client redis.Cmdable) *CodeCache {
 
 func (c *CodeCache) Set(ctx context.Context, biz, phone, code string) error {
 	res, err := c.client.Eval(ctx, luaSetCode, []string{c.key(biz, phone)}, code).Int64()
+
 	if err != nil {
+		fmt.Println("出错了嘛")
 		return err
 	}
 	switch res {

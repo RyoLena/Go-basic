@@ -39,7 +39,7 @@ func (svc *UserService) SignUp(ctx *gin.Context, u domain.User) error {
 
 func (svc *UserService) Login(ctx context.Context, user domain.User) (domain.User, error) {
 	//1.查询
-	u, err := svc.repo.FindByEmail(ctx, user)
+	u, err := svc.repo.FindByEmail(ctx, user.Email)
 	//用户不存在
 	if errors.Is(err, respository.RepoErrUserNotFound) {
 		return domain.User{}, ErrInvalidUserOrPassword
@@ -57,4 +57,20 @@ func (svc *UserService) Login(ctx context.Context, user domain.User) (domain.Use
 		return domain.User{}, ErrInvalidUserOrPassword
 	}
 	return u, nil
+}
+
+func (svc *UserService) FindOrCreate(ctx context.Context, phone string) (domain.User, error) {
+	u, err := svc.repo.FindByPhone(ctx, phone)
+	if !errors.Is(err, respository.RepoErrUserNotFound) {
+		return domain.User{}, err
+	}
+
+	err = svc.repo.Create(ctx, domain.User{
+		Phone: phone,
+	})
+
+	if err != nil {
+		return u, err
+	}
+	return svc.repo.FindByPhone(ctx, phone)
 }

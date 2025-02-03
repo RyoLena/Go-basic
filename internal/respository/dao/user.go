@@ -2,6 +2,7 @@ package dao
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"github.com/go-sql-driver/mysql"
 	"gorm.io/gorm"
@@ -39,9 +40,9 @@ func (ud *UserDao) Insert(ctx context.Context, user User) error {
 	return err
 }
 
-func (ud *UserDao) FindByEmail(ctx context.Context, user User) (User, error) {
+func (ud *UserDao) FindByEmail(ctx context.Context, email string) (User, error) {
 	var u User
-	err := ud.db.WithContext(ctx).Where("email=?", user.Email).First(&u).Error
+	err := ud.db.WithContext(ctx).Where("email=?", email).First(&u).Error
 	if errors.Is(err, ErrUserNotFound) {
 		return u, ErrUserNotFound
 	}
@@ -55,10 +56,22 @@ func (ud *UserDao) FindByID(ctx context.Context, id int64) (User, error) {
 	return user, ud.db.WithContext(ctx).Where("email=?", user.ID).First(&user).Error
 }
 
+func (ud *UserDao) FindByPhone(ctx context.Context, phone string) (User, error) {
+	user := User{
+		Phone: sql.NullString{
+			String: phone,
+			Valid:  phone != "",
+		},
+	}
+	return user, ud.db.WithContext(ctx).Where("phone=?", user.Phone).First(&user).Error
+}
+
 type User struct {
-	ID       int64  `gorm:"primaryKey,autoIncrement"`
-	Email    string `gorm:"unique"`
+	ID       int64          `gorm:"primaryKey,autoIncrement"`
+	Email    sql.NullString `gorm:"unique"`
 	Password string
+
+	Phone sql.NullString `gorm:"unique"`
 
 	Ctime int64
 	Utime int64

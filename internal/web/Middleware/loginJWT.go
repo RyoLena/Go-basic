@@ -33,6 +33,7 @@ func (l *LoginMiddlewareBuilder) CheckLoginJWT() gin.HandlerFunc {
 		for _, path := range l.ignorePath {
 			if ctx.Request.URL.Path == path {
 				ctx.Next()
+				return
 			}
 		}
 		tokenHead := ctx.GetHeader("Authorization")

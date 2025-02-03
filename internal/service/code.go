@@ -8,6 +8,8 @@ import (
 	"math/rand"
 )
 
+var ErrCodeVerifyToManyTimes = respository.ErrCodeVerifyTooManyTimes
+
 type CodeService struct {
 	codeRepo *respository.CodeRepo
 	smsSvc   ShortMessage.Service
@@ -24,12 +26,15 @@ func (codeSvc *CodeService) SendCode(ctx context.Context, biz, phone string) err
 	//生成验证码
 	code := codeSvc.generateCode()
 	//保存
+	fmt.Println(code)
+
 	err := codeSvc.codeRepo.Store(ctx, biz, phone, code)
 	if err != nil {
+		fmt.Println("走这里出错了嘛")
 		return err
 	}
 	//发送出去
-	err = codeSvc.smsSvc.Send(ctx, "tplID", []string{code}, phone)
+	err = codeSvc.smsSvc.Sends(ctx, "tplID", []string{code}, phone)
 	return err
 }
 
