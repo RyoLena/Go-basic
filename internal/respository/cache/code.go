@@ -23,20 +23,25 @@ var luaSetCode string
 //go:embed Lua/verify_code.lua
 var luaVerifyCode string
 
-type CodeCache struct {
+type CodeCache interface {
+	Set(ctx context.Context, biz, phone, code string) error
+	Verify(ctx context.Context, biz, phone, expeditedCode string) error
+}
+
+type CodeRedisCache struct {
 	client redis.Cmdable
 }
 
-func NewCodeCache(client redis.Cmdable) *CodeCache {
+func NewCodeCache(client redis.Cmdable) *CodeRedisCache {
 	if client == nil {
 		log.Fatal("Redis client is nil")
 	}
-	return &CodeCache{
+	return &CodeRedisCache{
 		client: client,
 	}
 }
 
-func (c *CodeCache) Set(ctx context.Context, biz, phone, code string) error {
+func (c *CodeRedisCache) Set(ctx context.Context, biz, phone, code string) error {
 	res, err := c.client.Eval(ctx, luaSetCode, []string{c.key(biz, phone)}, code).Int64()
 
 	if err != nil {
@@ -53,7 +58,7 @@ func (c *CodeCache) Set(ctx context.Context, biz, phone, code string) error {
 	}
 }
 
-func (c *CodeCache) Verify(ctx context.Context, biz, phone, expeditedCode string) error {
+func (c *CodeRedisCache) Verify(ctx context.Context, biz, phone, expeditedCode string) error {
 	res, err := c.client.Eval(ctx, luaVerifyCode, []string{c.key(biz, phone)}, expeditedCode).Int64()
 
 	if err != nil {
@@ -72,4 +77,6 @@ func (c *CodeCache) Verify(ctx context.Context, biz, phone, expeditedCode string
 
 }
 
-func (c *CodeCache) key(biz, phone string) string { return fmt.Sprintf("phone_code:%s,%s", biz, phone) }
+func (c *CodeRedisCache) key(biz, phone string) string {
+	return fmt.Sprintf("phone_code:%s,%s", biz, phone)
+}

@@ -1,27 +1,32 @@
 package respository
 
 import (
-	"Project/webBook_git/internal/respository/cache"
+	"Project/internal/respository/cache"
 	"context"
 )
 
 var ErrCodeVerifyTooManyTimes = cache.ErrCodeVerifyTooManyTimes
 var ErrCodeNotFound = cache.ErrUnKnownCode
 
-type CodeRepo struct {
-	cacheCode cache.CodeCache
+type CodeCodeRepository interface {
+	Store(ctx context.Context, biz, phone, code string) error
+	Verify(ctx context.Context, biz, phone, code string) error
 }
 
-func NewCodeRepo(cacheCode cache.CodeCache) *CodeRepo {
-	return &CodeRepo{
+type CodeStorage struct {
+	cacheCode *cache.CodeRedisCache
+}
+
+func NewCodeRepo(cacheCode *cache.CodeRedisCache) *CodeStorage {
+	return &CodeStorage{
 		cacheCode: cacheCode,
 	}
 }
 
-func (repo *CodeRepo) Store(ctx context.Context, biz, phone, code string) error {
+func (repo *CodeStorage) Store(ctx context.Context, biz, phone, code string) error {
 	return repo.cacheCode.Set(ctx, biz, phone, code)
 }
 
-func (repo *CodeRepo) Verify(ctx context.Context, biz, phone, code string) error {
+func (repo *CodeStorage) Verify(ctx context.Context, biz, phone, code string) error {
 	return repo.cacheCode.Verify(ctx, biz, phone, code)
 }

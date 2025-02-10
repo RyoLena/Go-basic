@@ -7,23 +7,27 @@
 package usersWire
 
 import (
-	"Project/webBook_git/internal/DB"
-	"Project/webBook_git/internal/respository"
-	"Project/webBook_git/internal/respository/cache"
-	"Project/webBook_git/internal/respository/dao"
-	"Project/webBook_git/internal/service"
-	"Project/webBook_git/internal/web"
+	"Project/internal/DB"
+	"Project/internal/respository"
+	"Project/internal/respository/cache"
+	"Project/internal/respository/dao"
+	"Project/internal/service"
+	"Project/internal/web"
 )
 
 // Injectors from wire.go:
 
 func InitWebService() *web.UserHandle {
 	db := DB.InitDB()
-	userDao := dao.NewUserDao(db)
+	userDataAccess := dao.NewUserDao(db)
 	cmdable := DB.InitRedis()
-	userCache := cache.NewUserCache(cmdable)
-	userRepo := respository.NewUserRepo(userDao, userCache)
-	userService := service.NewUserService(userRepo)
-	userHandle := web.NewUserHandle(userService)
+	userRedisCache := cache.NewUserCache(cmdable)
+	userStorage := respository.NewUserRepo(userDataAccess, userRedisCache)
+	userServiceImpl := service.NewUserService(userStorage)
+	codeRedisCache := cache.NewCodeCache(cmdable)
+	codeStorage := respository.NewCodeRepo(codeRedisCache)
+	shortMessageService := InitFakerSMS()
+	codeServiceImpl := service.NewCodeService(codeStorage, shortMessageService)
+	userHandle := web.NewUserHandle(userServiceImpl, codeServiceImpl)
 	return userHandle
 }

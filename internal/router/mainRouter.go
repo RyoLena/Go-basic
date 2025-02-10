@@ -1,8 +1,8 @@
 package router
 
 import (
-	"Project/webBook_git/internal/DB"
-	"Project/webBook_git/internal/pkg/ginx/middlewares/ratelimit"
+	"Project/internal/DB"
+	"Project/internal/pkg/ginx/middlewares/ratelimit"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"strings"

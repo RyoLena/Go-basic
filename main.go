@@ -1,7 +1,7 @@
 package main
 
 import (
-	"Project/webBook_git/internal/router"
+	"Project/internal/router"
 	"context"
 	"errors"
 	"log"

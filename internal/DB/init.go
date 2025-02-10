@@ -1,8 +1,8 @@
 package DB
 
 import (
-	"Project/webBook_git/config"
-	"Project/webBook_git/internal/respository/dao"
+	"Project/config"
+	"Project/internal/respository/dao"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"

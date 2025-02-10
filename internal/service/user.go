@@ -1,8 +1,8 @@
 package service
 
 import (
-	"Project/webBook_git/internal/domain"
-	"Project/webBook_git/internal/respository"
+	"Project/internal/domain"
+	"Project/internal/respository"
 	"context"
 	"errors"
 	"fmt"
@@ -13,19 +13,24 @@ import (
 var SVCErrUserDuplicated = respository.RepErrUserDuplicated
 var ErrInvalidUserOrPassword = errors.New("账号或者密码不对")
 
-type UserService struct {
-	repo     *respository.UserRepo
+type UserService interface {
+	SignUp(ctx *gin.Context, u domain.User) error
+	Login(ctx context.Context, user domain.User) (domain.User, error)
+	FindOrCreate(ctx context.Context, phone string) (domain.User, error)
+}
+type UserServiceImpl struct {
+	repo     respository.UserRepository
 	Email    string
 	Password string
 }
 
-func NewUserService(repo *respository.UserRepo) *UserService {
-	return &UserService{
+func NewUserService(repo *respository.UserStorage) *UserServiceImpl {
+	return &UserServiceImpl{
 		repo: repo,
 	}
 }
 
-func (svc *UserService) SignUp(ctx *gin.Context, u domain.User) error {
+func (svc *UserServiceImpl) SignUp(ctx *gin.Context, u domain.User) error {
 	//1.密码加密
 	//用bcrypt加密
 	hashPwd, err := bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
@@ -37,7 +42,7 @@ func (svc *UserService) SignUp(ctx *gin.Context, u domain.User) error {
 	return svc.repo.Create(ctx, u)
 }
 
-func (svc *UserService) Login(ctx context.Context, user domain.User) (domain.User, error) {
+func (svc *UserServiceImpl) Login(ctx context.Context, user domain.User) (domain.User, error) {
 	//1.查询
 	u, err := svc.repo.FindByEmail(ctx, user.Email)
 	//用户不存在
@@ -59,7 +64,7 @@ func (svc *UserService) Login(ctx context.Context, user domain.User) (domain.Use
 	return u, nil
 }
 
-func (svc *UserService) FindOrCreate(ctx context.Context, phone string) (domain.User, error) {
+func (svc *UserServiceImpl) FindOrCreate(ctx context.Context, phone string) (domain.User, error) {
 	u, err := svc.repo.FindByPhone(ctx, phone)
 	if !errors.Is(err, respository.RepoErrUserNotFound) {
 		return domain.User{}, err

@@ -1,9 +1,9 @@
 package router
 
 import (
-	"Project/webBook_git/config"
-	"Project/webBook_git/internal/web/Middleware"
-	"Project/webBook_git/ioc/usersWire"
+	"Project/config"
+	"Project/internal/web/Middleware"
+	"Project/ioc/usersWire"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/redis"
 	"github.com/gin-gonic/gin"
@@ -36,7 +36,7 @@ func UserGroutine(server *gin.Engine) {
 		IgnorePathJWT("/user/signup").
 		IgnorePathJWT("/user/login").
 		IgnorePathJWT("/user/login_sms/code/send").
-		IgnorePathJWT("/login_sms").CheckLoginJWT())
+		IgnorePathJWT("/user/login_sms").CheckLoginJWT())
 
 	userHandle := server.Group("/user")
 	{

@@ -1,8 +1,8 @@
 package service
 
 import (
-	"Project/webBook_git/internal/respository"
-	"Project/webBook_git/internal/service/ShortMessage"
+	"Project/internal/respository"
+	"Project/internal/service/ShortMessage"
 	"context"
 	"fmt"
 	"math/rand"
@@ -10,19 +10,23 @@ import (
 
 var ErrCodeVerifyToManyTimes = respository.ErrCodeVerifyTooManyTimes
 
-type CodeService struct {
-	codeRepo *respository.CodeRepo
+type CodeService interface {
+	SendCode(ctx context.Context, biz, phone string) error
+	VerifyCode(ctx context.Context, biz, phone, input string) error
+}
+type CodeServiceImpl struct {
+	codeRepo respository.CodeCodeRepository
 	smsSvc   ShortMessage.Service
 }
 
-func NewCodeService(codeRepo *respository.CodeRepo, smsSvc ShortMessage.Service) *CodeService {
-	return &CodeService{
+func NewCodeService(codeRepo *respository.CodeStorage, smsSvc ShortMessage.Service) *CodeServiceImpl {
+	return &CodeServiceImpl{
 		codeRepo: codeRepo,
 		smsSvc:   smsSvc,
 	}
 }
 
-func (codeSvc *CodeService) SendCode(ctx context.Context, biz, phone string) error {
+func (codeSvc *CodeServiceImpl) SendCode(ctx context.Context, biz, phone string) error {
 	//生成验证码
 	code := codeSvc.generateCode()
 	//保存
@@ -30,7 +34,6 @@ func (codeSvc *CodeService) SendCode(ctx context.Context, biz, phone string) err
 
 	err := codeSvc.codeRepo.Store(ctx, biz, phone, code)
 	if err != nil {
-		fmt.Println("走这里出错了嘛")
 		return err
 	}
 	//发送出去
@@ -38,11 +41,11 @@ func (codeSvc *CodeService) SendCode(ctx context.Context, biz, phone string) err
 	return err
 }
 
-func (codeSvc *CodeService) VerifyCode(ctx context.Context, biz, phone, input string) error {
+func (codeSvc *CodeServiceImpl) VerifyCode(ctx context.Context, biz, phone, input string) error {
 	return codeSvc.codeRepo.Verify(ctx, biz, phone, input)
 }
 
-func (codeSvc *CodeService) generateCode() string {
+func (codeSvc *CodeServiceImpl) generateCode() string {
 	num := rand.Intn(1000000)
 	return fmt.Sprintf("%06d", num)
 }

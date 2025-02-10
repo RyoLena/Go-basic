@@ -1,7 +1,7 @@
 package Middleware
 
 import (
-	"Project/webBook_git/internal/web"
+	"Project/internal/web"
 	"encoding/gob"
 	"fmt"
 	"github.com/gin-gonic/gin"

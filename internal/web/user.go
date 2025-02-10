@@ -1,8 +1,8 @@
 package web
 
 import (
-	"Project/webBook_git/internal/domain"
-	"Project/webBook_git/internal/service"
+	"Project/internal/domain"
+	"Project/internal/service"
 	"errors"
 	regexp "github.com/dlclark/regexp2"
 	"github.com/gin-contrib/sessions"
@@ -13,13 +13,13 @@ import (
 )
 
 type UserHandle struct {
-	codeSVC     *service.CodeService
-	svc         *service.UserService
+	codeSVC     service.CodeService
+	svc         service.UserService
 	emilExp     *regexp.Regexp
 	passwordExp *regexp.Regexp
 }
 
-func NewUserHandle(svc *service.UserService) *UserHandle {
+func NewUserHandle(userSvc *service.UserServiceImpl, codeSvc *service.CodeServiceImpl) *UserHandle {
 	const (
 		//正则表达式 简单的邮箱验证以及至少需要八位且含有一个特殊字符的密码验证
 		emailRegexPattern    = `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
@@ -28,7 +28,8 @@ func NewUserHandle(svc *service.UserService) *UserHandle {
 	emailExp := regexp.MustCompile(emailRegexPattern, regexp.None)
 	passwordExp := regexp.MustCompile(passwordRegexPattern, regexp.None)
 	return &UserHandle{
-		svc:         svc,
+		codeSVC:     codeSvc,
+		svc:         userSvc,
 		emilExp:     emailExp,
 		passwordExp: passwordExp,
 	}
@@ -39,6 +40,7 @@ func (user *UserHandle) SignalUP(ctx *gin.Context) {
 	type SignUp struct {
 		Email           string `json:"email"`
 		ConfirmPassword string `json:"confirm_password"`
+		Phone           string `json:"phone"`
 		Password        string `json:"password"`
 	}
 	var req SignUp
@@ -73,6 +75,7 @@ func (user *UserHandle) SignalUP(ctx *gin.Context) {
 	//3.数据库操作
 	err = user.svc.SignUp(ctx, domain.User{
 		Email:    req.Email,
+		Phone:    req.Phone,
 		Password: req.Password,
 	})
 	if errors.Is(err, service.SVCErrUserDuplicated) {
