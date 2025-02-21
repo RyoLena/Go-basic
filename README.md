@@ -16,16 +16,7 @@ Brief description of your project.
     2. 登录校验，可先先去看user中的login方法，然后看router中的userRouter中
 
 
-
-
-## Usage
-
-Examples of how to use your project.
-
-## Contributing
-
-Guidelines for contributing to your project.
-
-## License
-
-Specify your project's license.
+2025年 2-21日
+    完成了长短token的登录实现，
+    refreshToken需要使用user中的refresh路由检查
+    之前一直通过中间件检查出现了一直登陆不上的问题
