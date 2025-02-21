@@ -1,6 +1,7 @@
 package tencent
 
 import (
+	"Project/pkg/ratelimit"
 	"context"
 	"fmt"
 	"github.com/ecodeclub/ekit"
@@ -12,13 +13,15 @@ type Service struct {
 	appID    *string
 	signName *string
 	client   *sms.Client
+	limit    ratelimit.Limiter
 }
 
-func NewService(client *sms.Client, appID string, signName string) *Service {
+func NewService(client *sms.Client, appID string, signName string, limit ratelimit.Limiter) *Service {
 	return &Service{
 		client:   client,
 		appID:    ekit.ToPtr[string](appID),
 		signName: ekit.ToPtr[string](signName),
+		limit:    limit,
 	}
 }
 

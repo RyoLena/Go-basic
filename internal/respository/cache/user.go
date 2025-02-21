@@ -23,7 +23,7 @@ type UserRedisCache struct {
 	expiration time.Duration
 }
 
-func NewUserCache(client redis.Cmdable) *UserRedisCache {
+func NewUserCache(client redis.Cmdable) UserCache {
 	return &UserRedisCache{
 		client: client,
 		//这一段可以通 client一样外部谁调用谁传进来

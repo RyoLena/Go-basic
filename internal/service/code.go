@@ -19,7 +19,7 @@ type CodeServiceImpl struct {
 	smsSvc   ShortMessage.Service
 }
 
-func NewCodeService(codeRepo *respository.CodeStorage, smsSvc ShortMessage.Service) *CodeServiceImpl {
+func NewCodeService(codeRepo respository.CodeCodeRepository, smsSvc ShortMessage.Service) CodeService {
 	return &CodeServiceImpl{
 		codeRepo: codeRepo,
 		smsSvc:   smsSvc,

@@ -14,10 +14,10 @@ type CodeCodeRepository interface {
 }
 
 type CodeStorage struct {
-	cacheCode *cache.CodeRedisCache
+	cacheCode cache.CodeCache
 }
 
-func NewCodeRepo(cacheCode *cache.CodeRedisCache) *CodeStorage {
+func NewCodeRepo(cacheCode cache.CodeCache) CodeCodeRepository {
 	return &CodeStorage{
 		cacheCode: cacheCode,
 	}

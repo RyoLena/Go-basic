@@ -26,7 +26,7 @@ type UserDataAccess struct {
 	db *gorm.DB
 }
 
-func NewUserDao(db *gorm.DB) *UserDataAccess {
+func NewUserDao(db *gorm.DB) UserDao {
 	return &UserDataAccess{db: db}
 }
 

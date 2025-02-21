@@ -24,7 +24,7 @@ type UserServiceImpl struct {
 	Password string
 }
 
-func NewUserService(repo *respository.UserStorage) *UserServiceImpl {
+func NewUserService(repo respository.UserRepository) UserService {
 	return &UserServiceImpl{
 		repo: repo,
 	}

@@ -3,23 +3,26 @@ package web
 import (
 	"Project/internal/domain"
 	"Project/internal/service"
+	myjwt "Project/internal/web/jwt"
 	"errors"
+	"fmt"
 	regexp "github.com/dlclark/regexp2"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"net/http"
-	"time"
 )
 
 type UserHandle struct {
 	codeSVC     service.CodeService
 	svc         service.UserService
-	emilExp     *regexp.Regexp
+	emailExp    *regexp.Regexp
 	passwordExp *regexp.Regexp
+	myjwt.Handle
 }
 
-func NewUserHandle(userSvc *service.UserServiceImpl, codeSvc *service.CodeServiceImpl) *UserHandle {
+func NewUserHandle(userSvc service.UserService,
+	codeSvc service.CodeService, jwtHdl myjwt.Handle) *UserHandle {
 	const (
 		//正则表达式 简单的邮箱验证以及至少需要八位且含有一个特殊字符的密码验证
 		emailRegexPattern    = `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
@@ -30,9 +33,48 @@ func NewUserHandle(userSvc *service.UserServiceImpl, codeSvc *service.CodeServic
 	return &UserHandle{
 		codeSVC:     codeSvc,
 		svc:         userSvc,
-		emilExp:     emailExp,
+		emailExp:    emailExp,
 		passwordExp: passwordExp,
+		Handle:      jwtHdl,
 	}
+}
+
+func (user *UserHandle) Register(server *gin.Engine) {
+	userHandle := server.Group("/user")
+	{
+		userHandle.POST("/signup", user.SignalUP)
+		userHandle.POST("/login", user.LoginJWT)
+		userHandle.POST("/edit", user.Edit)
+		userHandle.GET("/profile", user.Profile)
+		userHandle.POST("/login_sms/code/send", user.SendSMSCode)
+		userHandle.POST("/login_sms", user.LoginBySMS)
+		userHandle.POST("/refresh_token", user.RefreshToken)
+	}
+}
+
+func (user *UserHandle) RefreshToken(ctx *gin.Context) {
+	RefreshToken := user.ExtractToken(ctx)
+	var rcKey myjwt.RefreshClaims
+	token, err := jwt.ParseWithClaims(RefreshToken, &rcKey, func(token *jwt.Token) (interface{}, error) {
+		return myjwt.RtKey, nil
+	})
+	if err != nil || !token.Valid {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	err = user.CheckSession(ctx, rcKey.SsID)
+	if err != nil {
+		_ = ctx.AbortWithError(401, fmt.Errorf("redis出错或者退出登录"))
+		return
+	}
+	err = user.SetJWTToken(ctx, rcKey.Uid, rcKey.SsID)
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	ctx.JSON(http.StatusOK, Result{
+		Msg: "ok",
+	})
 }
 
 func (user *UserHandle) SignalUP(ctx *gin.Context) {
@@ -49,7 +91,7 @@ func (user *UserHandle) SignalUP(ctx *gin.Context) {
 	}
 	//2.校验 使用正则表达式
 	//2.1 邮箱校验
-	ok, err := user.emilExp.MatchString(req.Email)
+	ok, err := user.emailExp.MatchString(req.Email)
 	if err != nil {
 		ctx.String(http.StatusOK, "系统错误")
 		return
@@ -119,7 +161,7 @@ func (user *UserHandle) LoginJWT(ctx *gin.Context) {
 		return
 	}
 
-	if err := user.SetJWT(ctx, usvc.ID); err != nil {
+	if err := user.Handle.SetLoginToken(ctx, usvc.ID); err != nil {
 		ctx.String(http.StatusOK, "系统错误")
 		return
 	}
@@ -128,34 +170,6 @@ func (user *UserHandle) LoginJWT(ctx *gin.Context) {
 		"email":    usvc.Email,
 		"password": usvc.Password,
 	})
-}
-
-func (user *UserHandle) SetJWT(ctx *gin.Context, uid int64) error {
-	claims := UserClaims{
-		RegisteredClaims: jwt.RegisteredClaims{
-			//设置过期时间
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Second * 30)),
-		},
-		Uid: uid,
-		//Email:     usvc.Email,
-		UserAgent: ctx.Request.UserAgent(),
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
-	tokenStr, err := token.SignedString([]byte("sUvca2dpn7veAV4odb4xQNwYFV0EescZ"))
-	if err != nil {
-		ctx.String(http.StatusOK, "jwt加密系统错误")
-		return err
-	}
-	ctx.Header("x-jwt-token", tokenStr)
-	return nil
-}
-
-type UserClaims struct {
-	jwt.RegisteredClaims
-	//想要获取什么从这里添加
-	Uid int64
-	//Email     string
-	UserAgent string
 }
 
 func (user *UserHandle) SendSMSCode(ctx *gin.Context) {
@@ -223,7 +237,7 @@ func (user *UserHandle) LoginBySMS(ctx *gin.Context) {
 		})
 		return
 	}
-	err = user.SetJWT(ctx, u.ID)
+	err = user.Handle.SetLoginToken(ctx, u.ID)
 	if err != nil {
 		ctx.JSON(http.StatusOK, Result{
 			Code: 5,
@@ -295,7 +309,7 @@ func (user *UserHandle) Profile(ctx *gin.Context) {
 	}
 	c, ok := ctx.Get("claims")
 
-	claims, ok := c.(*UserClaims)
+	claims, ok := c.(*myjwt.UserClaims)
 	if !ok {
 		ctx.String(http.StatusOK, "Claims代码系统错误")
 		return

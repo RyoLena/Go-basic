@@ -1,7 +1,7 @@
 package main
 
 import (
-	"Project/internal/router"
+	"Project/ioc"
 	"context"
 	"errors"
 	"log"
@@ -15,7 +15,7 @@ func main() {
 	//加载配置文件
 
 	//只用于启动网络服务的
-	r := router.MainGroute()
+	r := ioc.InitWebService()
 	port := ":3000" //后续从配置文件度去端口号
 	srv := &http.Server{
 		Addr:    port,

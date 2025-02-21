@@ -22,11 +22,11 @@ type UserRepository interface {
 }
 
 type UserStorage struct {
-	dao   *dao.UserDataAccess
-	cache *cache.UserRedisCache
+	dao   dao.UserDao
+	cache cache.UserCache
 }
 
-func NewUserRepo(db *dao.UserDataAccess, c *cache.UserRedisCache) *UserStorage {
+func NewUserRepo(db dao.UserDao, c cache.UserCache) UserRepository {
 	return &UserStorage{
 		dao:   db,
 		cache: c,

@@ -32,7 +32,7 @@ type CodeRedisCache struct {
 	client redis.Cmdable
 }
 
-func NewCodeCache(client redis.Cmdable) *CodeRedisCache {
+func NewCodeCache(client redis.Cmdable) CodeCache {
 	if client == nil {
 		log.Fatal("Redis client is nil")
 	}
